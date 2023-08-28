@@ -7,11 +7,13 @@
 package pterm
 
 import (
-	"atomicgo.dev/cursor"
-	"github.com/gookit/color"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"atomicgo.dev/cursor"
+	"github.com/gookit/color"
 )
 
 var (
@@ -36,8 +38,21 @@ func init() {
 	signal.Notify(c, os.Interrupt)
 	signal.Notify(c, syscall.SIGTERM)
 	go func() {
-		for range c {
+		for s := range c {
 			cursor.Show()
+
+			// Re-raise the signal to trigger the default behavior
+			signal.Stop(c)
+			p, err := os.FindProcess(os.Getpid())
+			if err != nil {
+				_, _ = fmt.Fprintf(os.Stderr, "failed to find process: %v\n", err)
+				return
+			}
+			err = p.Signal(s)
+			if err != nil {
+				_, _ = fmt.Fprintf(os.Stderr, "failed to signal process: %v\n", err)
+				return
+			}
 		}
 	}()
 }
